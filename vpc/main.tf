@@ -119,6 +119,8 @@ resource "aws_network_acl" "public" {
   count  = var.create_public_subnets == "yes" ? 1 : 0
   vpc_id = aws_vpc.this.id
   tags   = { Name = "public-nacl" }
+
+  subnet_ids = var.create_public_subnets == "yes" ? aws_subnet.public[*].id : []
 }
 
 resource "aws_network_acl_rule" "public_ingress" {
@@ -145,14 +147,6 @@ resource "aws_network_acl_rule" "public_egress" {
   to_port        = var.public_nacl_egress[count.index].to_port
 }
 
-resource "aws_subnet_network_acl_association" "public_assoc" {
-  count          = var.create_public_subnets == "yes" ? length(var.public_subnets) : 0
-  subnet_id      = aws_subnet.public[count.index].id
-  network_acl_id = aws_network_acl.public[0].id
-}
-
-# Repeat similar for private and isolated using private_nacl_ingress/egress and isolated_nacl_ingress/egress
-
 # -----------------------------
 # PRIVATE NACL
 # -----------------------------
@@ -160,9 +154,10 @@ resource "aws_network_acl" "private" {
   count  = var.create_private_subnets == "yes" ? 1 : 0
   vpc_id = aws_vpc.this.id
   tags   = { Name = "private-nacl" }
+
+  subnet_ids = var.create_private_subnets == "yes" ? aws_subnet.private[*].id : []
 }
 
-# Private Ingress Rules
 resource "aws_network_acl_rule" "private_ingress" {
   count          = var.create_private_subnets == "yes" ? length(var.private_nacl_ingress) : 0
   network_acl_id = aws_network_acl.private[0].id
@@ -175,7 +170,6 @@ resource "aws_network_acl_rule" "private_ingress" {
   to_port        = var.private_nacl_ingress[count.index].to_port
 }
 
-# Private Egress Rules
 resource "aws_network_acl_rule" "private_egress" {
   count          = var.create_private_subnets == "yes" ? length(var.private_nacl_egress) : 0
   network_acl_id = aws_network_acl.private[0].id
@@ -188,13 +182,6 @@ resource "aws_network_acl_rule" "private_egress" {
   to_port        = var.private_nacl_egress[count.index].to_port
 }
 
-# Associate Private NACL with Private Subnets
-resource "aws_subnet_network_acl_association" "private_assoc" {
-  count          = var.create_private_subnets == "yes" ? length(var.private_subnets) : 0
-  subnet_id      = aws_subnet.private[count.index].id
-  network_acl_id = aws_network_acl.private[0].id
-}
-
 # -----------------------------
 # ISOLATED NACL
 # -----------------------------
@@ -202,9 +189,10 @@ resource "aws_network_acl" "isolated" {
   count  = var.create_isolated_subnets == "yes" ? 1 : 0
   vpc_id = aws_vpc.this.id
   tags   = { Name = "isolated-nacl" }
+
+  subnet_ids = var.create_isolated_subnets == "yes" ? aws_subnet.isolated[*].id : []
 }
 
-# Isolated Ingress Rules
 resource "aws_network_acl_rule" "isolated_ingress" {
   count          = var.create_isolated_subnets == "yes" ? length(var.isolated_nacl_ingress) : 0
   network_acl_id = aws_network_acl.isolated[0].id
@@ -217,7 +205,6 @@ resource "aws_network_acl_rule" "isolated_ingress" {
   to_port        = var.isolated_nacl_ingress[count.index].to_port
 }
 
-# Isolated Egress Rules
 resource "aws_network_acl_rule" "isolated_egress" {
   count          = var.create_isolated_subnets == "yes" ? length(var.isolated_nacl_egress) : 0
   network_acl_id = aws_network_acl.isolated[0].id
@@ -228,11 +215,4 @@ resource "aws_network_acl_rule" "isolated_egress" {
   cidr_block     = var.isolated_nacl_egress[count.index].cidr_block
   from_port      = var.isolated_nacl_egress[count.index].from_port
   to_port        = var.isolated_nacl_egress[count.index].to_port
-}
-
-# Associate Isolated NACL with Isolated Subnets
-resource "aws_subnet_network_acl_association" "isolated_assoc" {
-  count          = var.create_isolated_subnets == "yes" ? length(var.isolated_subnets) : 0
-  subnet_id      = aws_subnet.isolated[count.index].id
-  network_acl_id = aws_network_acl.isolated[0].id
 }
