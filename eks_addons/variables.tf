@@ -21,3 +21,8 @@ variable "karpenter_oidc_arn" {
 variable "private_subnets" {
   type = list(string)
 }
+
+variable "aws_region" {
+  description = "AWS region where the cluster is running"
+  type        = string
+}

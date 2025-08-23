@@ -69,8 +69,9 @@ resource "helm_release" "karpenter" {
         name        = "karpenter"
         annotations = { "eks.amazonaws.com/role-arn" = aws_iam_role.karpenter[0].arn }
       }
-      clusterName = aws_eks_cluster.this.name
-      aws         = { clusterEndpoint = aws_eks_cluster.this.endpoint }
+      clusterName = data.aws_eks_cluster.this.name
+      aws         = { clusterEndpoint = data.aws_eks_cluster.this.endpoint }
+
     })
   ]
 }
@@ -83,14 +84,11 @@ data "aws_subnet" "private" {
   id    = var.private_subnets[count.index]
 }
 
-resource "aws_subnet" "tag_private_for_karpenter" {
-  count = length(var.private_subnets)
-  id    = data.aws_subnet.private[count.index].id
-
-  tags = merge(
-    data.aws_subnet.private[count.index].tags,
-    { "kubernetes.io/cluster/${var.cluster_name}" = "owned" }
-  )
+resource "aws_ec2_tag" "tag_private_for_karpenter" {
+  for_each    = toset(var.private_subnets)
+  resource_id = each.value
+  key         = "kubernetes.io/cluster/${var.cluster_name}"
+  value       = "owned"
 }
 
 # -----------------------------
