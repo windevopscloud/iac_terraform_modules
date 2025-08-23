@@ -9,3 +9,11 @@ output "cluster_endpoint" {
 output "node_group_ids" {
   value = aws_eks_node_group.this[*].id
 }
+
+output "eks_cluster_name" {
+  value = aws_eks_cluster.this.name
+}
+
+output "eks_cluster_ca" {
+  value = aws_eks_cluster.this.certificate_authority[0].data
+}

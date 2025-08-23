@@ -147,13 +147,19 @@ resource "helm_release" "karpenter" {
 # -----------------------------
 # Tag private subnets for Karpenter
 # -----------------------------
-resource "aws_subnet" "tag_private_for_karpenter" {
-  count = var.scaling_type == "karpenter" ? length(var.private_subnets) : 0
+data "aws_subnet" "private" {
+  count = length(var.private_subnets)
   id    = var.private_subnets[count.index]
+}
 
-  tags = {
-    "kubernetes.io/cluster/${var.cluster_name}" = "owned"
-  }
+resource "aws_subnet" "tag_private_for_karpenter" {
+  count = length(var.private_subnets)
+  id    = data.aws_subnet.private[count.index].id
+
+  tags = merge(
+    data.aws_subnet.private[count.index].tags,
+    { "kubernetes.io/cluster/${var.cluster_name}" = "owned" }
+  )
 }
 
 # -----------------------------
