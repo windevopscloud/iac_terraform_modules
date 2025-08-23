@@ -3,7 +3,7 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "region" {
+variable "aws_region" {
   description = "AWS Region"
   type        = string
 }
@@ -42,7 +42,7 @@ variable "node_group" {
 }
 
 variable "scaling_type" {
-  description = "Choose autoscaler: 'cluster-autoscaler' or 'karpenter'"
+  description = "Choose autoscaler: 'autoscaler' or 'karpenter'"
   type        = string
-  default     = "cluster-autoscaler"
+  default     = "autoscaler"
 }

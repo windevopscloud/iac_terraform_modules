@@ -32,7 +32,7 @@ data "aws_iam_policy_document" "eks_assume_role" {
 # Managed Node Group (Cluster Autoscaler)
 # -----------------------------
 resource "aws_eks_node_group" "this" {
-  count           = var.node_group.enable && var.scaling_type == "cluster-autoscaler" ? 1 : 0
+  count           = var.node_group.enable && var.scaling_type == "autoscaler" ? 1 : 0
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}-ng"
   node_role_arn   = aws_iam_role.eks_nodes.arn
@@ -66,19 +66,19 @@ data "aws_iam_policy_document" "eks_nodes_assume_role" {
 # -----------------------------
 # Cluster Autoscaler via Helm
 # -----------------------------
-resource "helm_release" "cluster_autoscaler" {
-  count      = var.scaling_type == "cluster-autoscaler" ? 1 : 0
-  name       = "cluster-autoscaler"
+resource "helm_release" "autoscaler" {
+  count      = var.scaling_type == "autoscaler" ? 1 : 0
+  name       = "autoscaler"
   repository = "https://kubernetes.github.io/autoscaler"
-  chart      = "cluster-autoscaler"
+  chart      = "autoscaler"
   namespace  = "kube-system"
   version    = "1.29.2"
 
   values = [
     yamlencode({
       autoDiscovery = { clusterName = aws_eks_cluster.this.name }
-      awsRegion     = var.region
-      rbac = { serviceAccount = { create = true, name = "cluster-autoscaler" } }
+      awsRegion     = var.aws_region
+      rbac = { serviceAccount = { create = true, name = "autoscaler" } }
       extraArgs = [
         "--balance-similar-node-groups",
         "--skip-nodes-with-local-storage=false",
