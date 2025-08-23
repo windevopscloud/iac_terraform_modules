@@ -28,10 +28,13 @@ variable "aws_region" {
 }
 
 variable "cluster_endpoint" {
-
+  description = "EKS cluster endpoint"
+  type        = string
 }
 
 variable "cluster_ca" {
-
+  description = "EKS cluster CA certificate"
+  type        = string
 }
+
 
