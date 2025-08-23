@@ -50,11 +50,11 @@ variable "scaling_type" {
 variable "autoscaler_chart_version" {
   description = "Version of the Cluster Autoscaler Helm chart"
   type        = string
-  default     = "1.29.2"
+  default     = "9.50.1"
 }
 
 variable "karpenter_chart_version" {
   description = "Version of the Karpenter Helm chart"
   type        = string
-  default     = "0.28.0"
+  default     = "0.37.2"
 }
