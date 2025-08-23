@@ -2,18 +2,6 @@ variable "cluster_name" {
     type = string 
 }
 
-variable "cluster_endpoint" { 
-    type = string 
-}
-
-variable "cluster_ca" { 
-    type = string 
-}
-
-variable "private_subnets" {
-     type = list(string) 
-}
-
 variable "scaling_type" {
      type = string 
 }

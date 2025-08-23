@@ -19,5 +19,6 @@ output "eks_cluster_ca" {
 }
 
 output "karpenter_oidc_arn" {
-  value = data.aws_iam_openid_connect_provider.eks_oidc.arn
+  value       = var.scaling_type == "karpenter" ? data.aws_iam_openid_connect_provider.eks_oidc.arn : ""
+  description = "OIDC ARN for Karpenter"
 }
