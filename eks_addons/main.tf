@@ -11,9 +11,9 @@ resource "helm_release" "autoscaler" {
 
   values = [
     yamlencode({
-      autoDiscovery = { clusterName = aws_eks_cluster.this.name }
+      autoDiscovery = { clusterName = var.cluster_name }
       awsRegion     = var.aws_region
-      rbac = { serviceAccount = { create = true, name = "autoscaler" } }
+      rbac          = { serviceAccount = { create = true, name = "autoscaler" } }
       extraArgs = [
         "--balance-similar-node-groups",
         "--skip-nodes-with-local-storage=false",
@@ -27,7 +27,7 @@ resource "helm_release" "autoscaler" {
 # Dynamic OIDC provider for Karpenter
 # -----------------------------
 data "aws_eks_cluster" "this" {
-  name = aws_eks_cluster.this.name
+  name = var.cluster_name
 }
 
 data "aws_iam_openid_connect_provider" "eks_oidc" {
@@ -44,9 +44,9 @@ resource "aws_iam_role" "karpenter" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Federated = data.aws_iam_openid_connect_provider.eks_oidc.arn }
-      Action = "sts:AssumeRoleWithWebIdentity"
+      Action    = "sts:AssumeRoleWithWebIdentity"
     }]
   })
 }
@@ -97,7 +97,7 @@ resource "aws_subnet" "tag_private_for_karpenter" {
 # Karpenter EC2NodeClass
 # -----------------------------
 resource "kubernetes_manifest" "karpenter_ec2nodeclass" {
-  count    = var.scaling_type == "karpenter" ? 1 : 0
+  count = var.scaling_type == "karpenter" ? 1 : 0
   manifest = {
     apiVersion = "karpenter.k8s.aws/v1beta1"
     kind       = "EC2NodeClass"
@@ -117,7 +117,7 @@ resource "kubernetes_manifest" "karpenter_ec2nodeclass" {
 # Karpenter Provisioner
 # -----------------------------
 resource "kubernetes_manifest" "karpenter_provisioner" {
-  count    = var.scaling_type == "karpenter" ? 1 : 0
+  count = var.scaling_type == "karpenter" ? 1 : 0
   manifest = {
     apiVersion = "karpenter.sh/v1alpha5"
     kind       = "Provisioner"
@@ -125,11 +125,11 @@ resource "kubernetes_manifest" "karpenter_provisioner" {
     spec = {
       requirements = [
         { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
-        { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot","on-demand"] }
+        { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] }
       ]
-      limits = { resources = { cpu = "1000" } }
+      limits               = { resources = { cpu = "1000" } }
       ttlSecondsAfterEmpty = 30
-      providerRef = { name = "default-ec2nodeclass" }
+      providerRef          = { name = "default-ec2nodeclass" }
     }
   }
 }

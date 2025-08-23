@@ -1,19 +1,23 @@
-variable "cluster_name" { 
-    type = string 
+variable "cluster_name" {
+  type = string
 }
 
 variable "scaling_type" {
-     type = string 
+  type = string
 }
 
 variable "karpenter_chart_version" {
-     type = string 
+  type = string
 }
 
 variable "autoscaler_chart_version" {
-    type = string 
+  type = string
 }
 
-variable "karpenter_oidc_arn" { 
-    type = string 
+variable "karpenter_oidc_arn" {
+  type = string
+}
+
+variable "private_subnets" {
+  type = list(string)
 }

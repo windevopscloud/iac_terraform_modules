@@ -70,9 +70,9 @@ variable "public_nacl_ingress" {
     to_port     = number
   }))
   default = [
-    { rule_number = 100, protocol = "6", action = "allow", cidr_block = "0.0.0.0/0", from_port = 80,  to_port = 80 },
+    { rule_number = 100, protocol = "6", action = "allow", cidr_block = "0.0.0.0/0", from_port = 80, to_port = 80 },
     { rule_number = 110, protocol = "6", action = "allow", cidr_block = "0.0.0.0/0", from_port = 443, to_port = 443 },
-    { rule_number = 120, protocol = "6", action = "allow", cidr_block = "0.0.0.0/0", from_port = 22,  to_port = 22 }
+    { rule_number = 120, protocol = "6", action = "allow", cidr_block = "0.0.0.0/0", from_port = 22, to_port = 22 }
   ]
 }
 
