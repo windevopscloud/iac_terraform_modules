@@ -24,17 +24,6 @@ resource "helm_release" "autoscaler" {
 }
 
 # -----------------------------
-# Dynamic OIDC provider for Karpenter
-# -----------------------------
-data "aws_eks_cluster" "this" {
-  name = var.cluster_name
-}
-
-data "aws_iam_openid_connect_provider" "eks_oidc" {
-  url = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
-}
-
-# -----------------------------
 # Karpenter IAM Role
 # -----------------------------
 resource "aws_iam_role" "karpenter" {
@@ -45,7 +34,7 @@ resource "aws_iam_role" "karpenter" {
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { Federated = data.aws_iam_openid_connect_provider.eks_oidc.arn }
+      Principal = { Federated = var.karpenter_oidc_arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
     }]
   })
@@ -69,9 +58,8 @@ resource "helm_release" "karpenter" {
         name        = "karpenter"
         annotations = { "eks.amazonaws.com/role-arn" = aws_iam_role.karpenter[0].arn }
       }
-      clusterName = data.aws_eks_cluster.this.name
-      aws         = { clusterEndpoint = data.aws_eks_cluster.this.endpoint }
-
+      clusterName = var.cluster_name
+      aws         = { clusterEndpoint = var.cluster_endpoint }
     })
   ]
 }
@@ -79,11 +67,6 @@ resource "helm_release" "karpenter" {
 # -----------------------------
 # Tag private subnets for Karpenter
 # -----------------------------
-data "aws_subnet" "private" {
-  count = length(var.private_subnets)
-  id    = var.private_subnets[count.index]
-}
-
 resource "aws_ec2_tag" "tag_private_for_karpenter" {
   for_each    = { for idx, subnet_id in var.private_subnets : idx => subnet_id }
   resource_id = each.value

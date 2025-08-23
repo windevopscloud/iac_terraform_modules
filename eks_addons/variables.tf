@@ -26,3 +26,12 @@ variable "aws_region" {
   description = "AWS region where the cluster is running"
   type        = string
 }
+
+variable "cluster_endpoint" {
+
+}
+
+variable "cluster_ca" {
+
+}
+
