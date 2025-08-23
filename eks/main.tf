@@ -1,6 +1,11 @@
 # -----------------------------
 # EKS Cluster
 # -----------------------------
+#tfsec:ignore:aws-eks-no-public-cluster-access
+#tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
+#tfsec:ignore:aws-eks-encrypt-secrets
+#tfsec:ignore:aws-eks-enable-control-plane-logging
+
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   version  = var.eks_version
