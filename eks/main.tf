@@ -1,10 +1,6 @@
 # -----------------------------
 # EKS Cluster
 # -----------------------------
-#tfsec:ignore:aws-eks-no-public-cluster-access
-#tfsec:ignore:aws-eks-no-public-cluster-access-to-cidr
-#tfsec:ignore:aws-eks-encrypt-secrets
-#tfsec:ignore:aws-eks-enable-control-plane-logging
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   version  = var.eks_version
@@ -15,9 +11,9 @@ resource "aws_eks_cluster" "this" {
   }
 }
 
-# IAM Role for Cluster
+# IAM Role for EKS Cluster
 resource "aws_iam_role" "eks_cluster" {
-  name = "${var.cluster_name}-eks-cluster-role"
+  name               = "${var.cluster_name}-eks-cluster-role"
   assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
 }
 
@@ -76,7 +72,7 @@ resource "helm_release" "autoscaler" {
   repository = "https://kubernetes.github.io/autoscaler"
   chart      = "autoscaler"
   namespace  = "kube-system"
-  version    = "1.29.2"
+  version    = var.autoscaler_chart_version
 
   values = [
     yamlencode({
@@ -93,16 +89,28 @@ resource "helm_release" "autoscaler" {
 }
 
 # -----------------------------
+# Dynamic OIDC provider for Karpenter
+# -----------------------------
+data "aws_eks_cluster" "this" {
+  name = aws_eks_cluster.this.name
+}
+
+data "aws_iam_openid_connect_provider" "eks_oidc" {
+  url = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+# -----------------------------
 # Karpenter IAM Role
 # -----------------------------
 resource "aws_iam_role" "karpenter" {
   count = var.scaling_type == "karpenter" ? 1 : 0
   name  = "${var.cluster_name}-karpenter-role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+      Principal = { Federated = data.aws_iam_openid_connect_provider.eks_oidc.arn }
       Action = "sts:AssumeRoleWithWebIdentity"
     }]
   })
@@ -117,7 +125,7 @@ resource "helm_release" "karpenter" {
   repository = "https://charts.karpenter.sh"
   chart      = "karpenter"
   namespace  = "karpenter"
-  version    = "0.28.0"
+  version    = var.karpenter_chart_version
 
   values = [
     yamlencode({
@@ -136,13 +144,12 @@ resource "helm_release" "karpenter" {
 # Tag private subnets for Karpenter
 # -----------------------------
 resource "aws_subnet" "tag_private_for_karpenter" {
-  count = length(var.private_subnets)
+  count = var.scaling_type == "karpenter" ? length(var.private_subnets) : 0
   id    = var.private_subnets[count.index]
 
-  tags = merge(
-    aws_subnet.this[count.index].tags,
-    { "kubernetes.io/cluster/${var.cluster_name}" = "owned" }
-  )
+  tags = {
+    "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+  }
 }
 
 # -----------------------------
