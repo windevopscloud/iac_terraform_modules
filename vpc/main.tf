@@ -19,22 +19,22 @@ resource "aws_internet_gateway" "this" {
 }
 
 # -----------------------------
-# ELASTIC IP FOR NAT GATEWAY
+# ELASTIC IPS FOR NAT GATEWAYS
 # -----------------------------
 resource "aws_eip" "nat" {
-  count = var.create_nat_gateway == "yes" ? 1 : 0
+  count = var.create_nat_gateway == "yes" ? length(var.public_subnets) : 0
   vpc   = true
-  tags  = { Name = "nat-eip" }
+  tags  = { Name = "nat-eip-${count.index + 1}" }
 }
 
 # -----------------------------
-# NAT GATEWAY
+# NAT GATEWAYS
 # -----------------------------
 resource "aws_nat_gateway" "this" {
-  count         = var.create_nat_gateway == "yes" ? 1 : 0
-  allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id   # place NAT in first public subnet
-  tags          = { Name = "nat-gateway" }
+  count         = var.create_nat_gateway == "yes" ? length(var.public_subnets) : 0
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id  # NAT in corresponding public subnet/AZ
+  tags          = { Name = "nat-gateway-${count.index + 1}" }
 }
 
 # -----------------------------
@@ -86,12 +86,14 @@ resource "aws_route_table" "private" {
   tags   = { Name = "private-rt" }
 }
 
-# Route for Private Subnets to NAT
+# Route for Private Subnets to NAT per AZ
 resource "aws_route" "private_internet" {
-  count                  = var.create_private_subnets == "yes" && var.create_nat_gateway == "yes" ? 1 : 0
+  count                  = var.create_private_subnets == "yes" && var.create_nat_gateway == "yes" ? length(var.private_subnets) : 0
   route_table_id         = aws_route_table.private[0].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.this[0].id
+
+  # Select NAT in the same AZ as the private subnet
+  nat_gateway_id = aws_nat_gateway.this[count.index % length(aws_nat_gateway.this)].id
 }
 
 # Associate Private Subnets with Private Route Table
@@ -215,4 +217,14 @@ resource "aws_network_acl_rule" "isolated_egress" {
   cidr_block     = var.isolated_nacl_egress[count.index].cidr_block
   from_port      = var.isolated_nacl_egress[count.index].from_port
   to_port        = var.isolated_nacl_egress[count.index].to_port
+}
+
+# -----------------------------
+# ROUTE53 RESOLVER
+# -----------------------------
+resource "aws_route53_resolver_rule_association" "resolver" {
+  count             = var.resolver_rule_ids != null ? length(var.resolver_rule_ids) : 0
+  resolver_rule_id  = var.resolver_rule_ids[count.index]
+  vpc_id            = aws_vpc.this.id
+  name              = "vpc-to-central-dns-${count.index}"
 }

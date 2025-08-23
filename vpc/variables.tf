@@ -152,3 +152,9 @@ variable "isolated_nacl_egress" {
     { rule_number = 100, protocol = "-1", action = "allow", cidr_block = "10.0.0.0/16", from_port = 0, to_port = 0 }
   ]
 }
+
+variable "resolver_rule_ids" {
+  description = "List of Route53 Resolver Rule IDs for central DNS"
+  type        = list(string)
+  default     = []
+}

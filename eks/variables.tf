@@ -1,0 +1,48 @@
+variable "cluster_name" {
+  description = "EKS Cluster name"
+  type        = string
+}
+
+variable "region" {
+  description = "AWS Region"
+  type        = string
+}
+
+variable "private_subnets" {
+  description = "Private subnets from VPC module"
+  type        = list(string)
+}
+
+#variable "private_subnet_azs" {
+#  type        = list(string)
+#  description = "Availability zones of private subnets"
+#}
+
+variable "eks_version" {
+  description = "Kubernetes version"
+  type        = string
+}
+
+variable "node_group" {
+  description = "Node group configuration (for Cluster Autoscaler)"
+  type = object({
+    enable         = bool
+    instance_types = list(string)
+    desired_size   = number
+    min_size       = number
+    max_size       = number
+  })
+  default = {
+    enable         = true
+    instance_types = ["t3.medium"]
+    desired_size   = 2
+    min_size       = 1
+    max_size       = 4
+  }
+}
+
+variable "scaling_type" {
+  description = "Choose autoscaler: 'cluster-autoscaler' or 'karpenter'"
+  type        = string
+  default     = "cluster-autoscaler"
+}
