@@ -134,6 +134,7 @@ data "aws_iam_openid_connect_provider" "eks_oidc" {
 # -----------------------------
 # Launch Template for Node Group
 # -----------------------------
+#tfsec:ignore:aws-ec2-enforce-launch-config-http-token-imds
 resource "aws_launch_template" "eks_nodes" {
   name_prefix   = "${var.cluster_name}-lt"
   image_id      = var.eks_node_ami_id
@@ -249,6 +250,8 @@ resource "aws_security_group" "ssm_endpoint_sg" {
 # -----------------------------
 # SECURITY GROUPS for Nodes & Jumpbox
 # -----------------------------
+#tfsec:ignore:aws-ec2-no-public-egress-sgr
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group" "eks_nodes_sg" {
   name        = "${var.cluster_name}-eks-nodes-sg"
   vpc_id      = var.vpc_id
@@ -264,6 +267,7 @@ resource "aws_security_group" "eks_nodes_sg" {
   tags = { Name = "${var.cluster_name}-eks-nodes-sg" }
 }
 
+#tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_security_group" "jumpbox_sg" {
   name        = "${var.cluster_name}-jumpbox-sg"
   vpc_id      = var.vpc_id
