@@ -134,14 +134,13 @@ data "aws_iam_openid_connect_provider" "eks_oidc" {
 # -----------------------------
 # Launch Template for Node Group
 # -----------------------------
-#tfsec:ignore:aws-ec2-enforce-launch-config-http-token-imds
 resource "aws_launch_template" "eks_nodes" {
   name_prefix   = "${var.cluster_name}-lt"
   image_id      = var.eks_node_ami_id
   instance_type = var.node_group.instance_types[0]
 
   network_interfaces {
-    security_groups = [aws_security_group.ssm_endpoint_sg.id]
+    security_groups = [aws_security_group.eks_nodes_sg.id]
   }
 
   user_data = base64encode(<<-EOT
@@ -153,6 +152,7 @@ resource "aws_launch_template" "eks_nodes" {
   )
 }
 
+# IAM Role for EKS Nodes
 resource "aws_iam_instance_profile" "eks_nodes" {
   name = "${var.cluster_name}-nodegroup-instance-profile"
   role = aws_iam_role.eks_nodes.name
@@ -168,12 +168,9 @@ resource "aws_instance" "jumpbox" {
   instance_type        = "t3.micro"
   subnet_id            = var.private_subnets[0]
   iam_instance_profile = aws_iam_instance_profile.jumpbox.name
+  vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
 
-  vpc_security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
-
-  tags = {
-    Name = "${var.cluster_name}-jumpbox"
-  }
+  tags = { Name = "${var.cluster_name}-jumpbox" }
 
   user_data = base64encode(<<-EOT
     #!/bin/bash
@@ -216,15 +213,27 @@ resource "aws_iam_instance_profile" "jumpbox" {
 }
 
 # -----------------------------
-# VPC Endpoints for SSM
+# SECURITY GROUP for SSM Endpoints
 # -----------------------------
 #tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 #tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_security_group" "ssm_endpoint_sg" {
   name        = "${var.cluster_name}-ssm-endpoint-sg"
-  description = "Allow HTTPS access to SSM endpoints"
-  vpc_id      = var.vpc_id # <- derived from VPC module
+  description = "Allow HTTPS access from EKS nodes and jumpbox to SSM endpoints"
+  vpc_id      = var.vpc_id
 
+  # Allow nodes & jumpbox to connect to SSM endpoints
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.eks_nodes_sg.id,   # Node SG
+      aws_security_group.jumpbox_sg.id      # Jumpbox SG
+    ]
+  }
+
+  # Allow outbound HTTPS from endpoint to anywhere (default)
   egress {
     from_port   = 443
     to_port     = 443
@@ -237,29 +246,65 @@ resource "aws_security_group" "ssm_endpoint_sg" {
   }
 }
 
+# -----------------------------
+# SECURITY GROUPS for Nodes & Jumpbox
+# -----------------------------
+resource "aws_security_group" "eks_nodes_sg" {
+  name        = "${var.cluster_name}-eks-nodes-sg"
+  vpc_id      = var.vpc_id
+  description = "Security group for EKS worker nodes"
+
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.cluster_name}-eks-nodes-sg" }
+}
+
+resource "aws_security_group" "jumpbox_sg" {
+  name        = "${var.cluster_name}-jumpbox-sg"
+  vpc_id      = var.vpc_id
+  description = "Security group for jumpbox"
+
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.cluster_name}-jumpbox-sg" }
+}
+
+# -----------------------------
+# VPC ENDPOINTS for SSM
+# -----------------------------
 resource "aws_vpc_endpoint" "ssm" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ssm"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.private_subnets
-  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = var.private_subnets
+  security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.private_subnets
-  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.ec2messages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = var.private_subnets
+  security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = var.private_subnets
-  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.ssmmessages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = var.private_subnets
+  security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }
