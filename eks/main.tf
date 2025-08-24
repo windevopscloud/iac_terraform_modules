@@ -78,6 +78,16 @@ data "aws_eks_cluster_auth" "this" {
   name = aws_eks_cluster.this.name
 }
 
+# Create IAM OIDC provider for the EKS cluster
+resource "aws_iam_openid_connect_provider" "eks_oidc" {
+  url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
+  client_id_list  = ["sts.amazonaws.com"]
+
+  # Thumbprint for AWS root CA used by OIDC
+  thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da0afd10df6"]
+}
+
+# Optional data source to fetch it later if needed
 data "aws_iam_openid_connect_provider" "eks_oidc" {
-  arn = aws_eks_cluster.this.identity[0].oidc[0].issuer
+  arn = aws_iam_openid_connect_provider.eks_oidc.arn
 }
