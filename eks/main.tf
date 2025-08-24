@@ -11,9 +11,9 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.eks_cluster.arn
 
   vpc_config {
-    subnet_ids = var.private_subnets
-    endpoint_private_access = true   # ✅ Only accessible inside VPC
-    endpoint_public_access  = false  # ✅ Disable internet access
+    subnet_ids              = var.private_subnets
+    endpoint_private_access = true  # ✅ Only accessible inside VPC
+    endpoint_public_access  = false # ✅ Disable internet access
   }
 }
 
@@ -61,7 +61,10 @@ resource "aws_eks_node_group" "this" {
     max_size     = var.node_group.max_size
   }
 
-  instance_types = var.node_group.instance_types
+  launch_template {
+    id      = aws_launch_template.eks_nodes.id
+    version = "$Latest"
+  }
 }
 
 # Node group IAM Role
@@ -97,6 +100,12 @@ resource "aws_iam_role_policy_attachment" "ecr_readonly" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+# Allow Session Manager access to nodes
+resource "aws_iam_role_policy_attachment" "ssm_managed_instance" {
+  role       = aws_iam_role.eks_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # -----------------------------
 # Data required for outputs
 # -----------------------------
@@ -110,8 +119,8 @@ data "aws_eks_cluster_auth" "this" {
 
 # Create IAM OIDC provider for the EKS cluster
 resource "aws_iam_openid_connect_provider" "eks_oidc" {
-  url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
-  client_id_list  = ["sts.amazonaws.com"]
+  url            = aws_eks_cluster.this.identity[0].oidc[0].issuer
+  client_id_list = ["sts.amazonaws.com"]
 
   # Thumbprint for AWS root CA used by OIDC
   thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da0afd10df6"]
@@ -120,4 +129,73 @@ resource "aws_iam_openid_connect_provider" "eks_oidc" {
 # Optional data source to fetch it later if needed
 data "aws_iam_openid_connect_provider" "eks_oidc" {
   arn = aws_iam_openid_connect_provider.eks_oidc.arn
+}
+
+# Create Launch Template for the EKS cluster
+resource "aws_launch_template" "eks_nodes" {
+  name_prefix   = "${var.cluster_name}-lt"
+  image_id      = var.eks_node_ami_id # optional, custom AMI
+  instance_type = var.node_group.instance_types[0]
+  iam_instance_profile {
+    name = aws_iam_instance_profile.eks_nodes.name
+  }
+  user_data = base64encode(<<-EOT
+              #!/bin/bash
+              yum install -y amazon-ssm-agent
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+              EOT
+  )
+}
+
+resource "aws_iam_instance_profile" "eks_nodes" {
+  name = "${var.cluster_name}-nodegroup-instance-profile"
+  role = aws_iam_role.eks_nodes.name
+}
+
+#Jumpbox to access kubectl
+resource "aws_instance" "jumpbox" {
+  ami                  = var.jumpbox_ami_id
+  instance_type        = "t3.micro"
+  subnet_id            = var.private_subnets[0]
+  iam_instance_profile = aws_iam_instance_profile.jumpbox.name
+
+  user_data = base64encode(<<-EOT
+    #!/bin/bash
+    yum install -y amazon-ssm-agent kubectl
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+  EOT
+  )
+}
+
+# IAM Role for Jumpbox
+resource "aws_iam_role" "jumpbox" {
+  name = "${var.cluster_name}-jumpbox-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+# Attach policies to allow kubectl access to EKS and SSM
+resource "aws_iam_role_policy_attachment" "jumpbox_eks_access" {
+  role       = aws_iam_role.jumpbox.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "jumpbox_ssm" {
+  role       = aws_iam_role.jumpbox.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# Instance profile for jumpbox
+resource "aws_iam_instance_profile" "jumpbox" {
+  name = "${var.cluster_name}-jumpbox-instance-profile"
+  role = aws_iam_role.jumpbox.name
 }
