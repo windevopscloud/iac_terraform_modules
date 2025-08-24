@@ -137,9 +137,7 @@ resource "aws_launch_template" "eks_nodes" {
   name_prefix   = "${var.cluster_name}-lt"
   image_id      = var.eks_node_ami_id # optional, custom AMI
   instance_type = var.node_group.instance_types[0]
-  iam_instance_profile {
-    name = aws_iam_instance_profile.eks_nodes.name
-  }
+
   user_data = base64encode(<<-EOT
               #!/bin/bash
               yum install -y amazon-ssm-agent
@@ -162,6 +160,9 @@ resource "aws_instance" "jumpbox" {
   instance_type        = "t3.micro"
   subnet_id            = var.private_subnets[0]
   iam_instance_profile = aws_iam_instance_profile.jumpbox.name
+  tags = {
+    Name = "${var.cluster_name}-jumpbox"
+  }
 
   user_data = base64encode(<<-EOT
     #!/bin/bash
