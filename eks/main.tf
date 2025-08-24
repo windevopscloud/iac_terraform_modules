@@ -12,6 +12,8 @@ resource "aws_eks_cluster" "this" {
 
   vpc_config {
     subnet_ids = var.private_subnets
+    endpoint_private_access = true   # ✅ Only accessible inside VPC
+    endpoint_public_access  = false  # ✅ Disable internet access
   }
 }
 
@@ -30,6 +32,17 @@ data "aws_iam_policy_document" "eks_assume_role" {
     }
     actions = ["sts:AssumeRole"]
   }
+}
+
+# Attach required managed policies
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_service_policy" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
 }
 
 # -----------------------------
@@ -51,6 +64,7 @@ resource "aws_eks_node_group" "this" {
   instance_types = var.node_group.instance_types
 }
 
+# Node group IAM Role
 resource "aws_iam_role" "eks_nodes" {
   name               = "${var.cluster_name}-eks-nodegroup-role"
   assume_role_policy = data.aws_iam_policy_document.eks_nodes_assume_role.json
@@ -65,6 +79,22 @@ data "aws_iam_policy_document" "eks_nodes_assume_role" {
     }
     actions = ["sts:AssumeRole"]
   }
+}
+
+# Attach required AWS managed policies
+resource "aws_iam_role_policy_attachment" "eks_worker_node" {
+  role       = aws_iam_role.eks_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni" {
+  role       = aws_iam_role.eks_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_readonly" {
+  role       = aws_iam_role.eks_nodes.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 # -----------------------------

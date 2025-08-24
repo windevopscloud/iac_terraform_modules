@@ -5,7 +5,7 @@ resource "helm_release" "autoscaler" {
   count      = var.scaling_type == "autoscaler" ? 1 : 0
   name       = "autoscaler"
   repository = "https://kubernetes.github.io/autoscaler"
-  chart      = "autoscaler"
+  chart      = "cluster-autoscaler"
   namespace  = "kube-system"
   version    = var.autoscaler_chart_version
 
