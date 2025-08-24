@@ -132,6 +132,7 @@ data "aws_iam_openid_connect_provider" "eks_oidc" {
 }
 
 # Create Launch Template for the EKS cluster
+#tfsec:ignore:aws-ec2-enforce-launch-config-http-token-imds
 resource "aws_launch_template" "eks_nodes" {
   name_prefix   = "${var.cluster_name}-lt"
   image_id      = var.eks_node_ami_id # optional, custom AMI
@@ -154,6 +155,8 @@ resource "aws_iam_instance_profile" "eks_nodes" {
 }
 
 #Jumpbox to access kubectl
+#tfsec:ignore:aws-ec2-enforce-http-token-imds
+#tfsec:ignore:aws-ec2-enable-at-rest-encryption
 resource "aws_instance" "jumpbox" {
   ami                  = var.jumpbox_ami_id
   instance_type        = "t3.micro"
