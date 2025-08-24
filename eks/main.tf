@@ -223,7 +223,7 @@ resource "aws_iam_instance_profile" "jumpbox" {
 resource "aws_security_group" "ssm_endpoint_sg" {
   name        = "${var.cluster_name}-ssm-endpoint-sg"
   description = "Allow HTTPS access to SSM endpoints"
-  vpc_id      = module.vpc.vpc_id   # <- derived from VPC module
+  vpc_id      = var.vpc_id # <- derived from VPC module
 
   egress {
     from_port   = 443
@@ -238,28 +238,28 @@ resource "aws_security_group" "ssm_endpoint_sg" {
 }
 
 resource "aws_vpc_endpoint" "ssm" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.${var.aws_region}.ssm"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = var.private_subnets
-  security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ssm"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.private_subnets
+  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.${var.aws_region}.ec2messages"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = var.private_subnets
-  security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ec2messages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.private_subnets
+  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }
 
 resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.${var.aws_region}.ssmmessages"
-  vpc_endpoint_type = "Interface"
-  subnet_ids        = var.private_subnets
-  security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.private_subnets
+  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }

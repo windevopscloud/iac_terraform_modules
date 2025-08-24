@@ -70,3 +70,8 @@ variable "jumpbox_ami_id" {
   type        = string
   default     = ""
 }
+
+variable "vpc_id" {
+  description = "The ID of the VPC where EKS cluster and nodes will be deployed"
+  type        = string
+}
