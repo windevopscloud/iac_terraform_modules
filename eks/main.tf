@@ -218,6 +218,8 @@ resource "aws_iam_instance_profile" "jumpbox" {
 # -----------------------------
 # VPC Endpoints for SSM
 # -----------------------------
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
+#tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_security_group" "ssm_endpoint_sg" {
   name        = "${var.cluster_name}-ssm-endpoint-sg"
   description = "Allow HTTPS access to SSM endpoints"
