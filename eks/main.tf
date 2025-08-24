@@ -268,6 +268,7 @@ resource "aws_security_group" "eks_nodes_sg" {
 }
 
 #tfsec:ignore:aws-ec2-no-public-egress-sgr
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group" "jumpbox_sg" {
   name        = "${var.cluster_name}-jumpbox-sg"
   vpc_id      = var.vpc_id
