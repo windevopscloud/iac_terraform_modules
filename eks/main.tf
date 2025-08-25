@@ -213,6 +213,7 @@ resource "aws_iam_instance_profile" "jumpbox" {
   role = aws_iam_role.jumpbox.name
 }
 
+/*
 # -----------------------------
 # SECURITY GROUP for SSM Endpoints
 # -----------------------------
@@ -282,6 +283,87 @@ resource "aws_security_group" "jumpbox_sg" {
   }
 
   tags = { Name = "${var.cluster_name}-jumpbox-sg" }
+}
+*/
+
+# ----------------------------
+# Security Groups (empty rules)
+# ----------------------------
+resource "aws_security_group" "eks_nodes_sg" {
+  name        = "${var.cluster_name}-eks-nodes-sg"
+  vpc_id      = var.vpc_id
+  description = "Security group for EKS worker nodes"
+
+  tags = { Name = "${var.cluster_name}-eks-nodes-sg" }
+}
+
+resource "aws_security_group" "jumpbox_sg" {
+  name        = "${var.cluster_name}-jumpbox-sg"
+  vpc_id      = var.vpc_id
+  description = "Security group for jumpbox host"
+
+  tags = { Name = "${var.cluster_name}-jumpbox-sg" }
+}
+
+resource "aws_security_group" "ssm_endpoint_sg" {
+  name        = "${var.cluster_name}-ssm-endpoint-sg"
+  vpc_id      = var.vpc_id
+  description = "Security group for SSM endpoints"
+
+  tags = { Name = "${var.cluster_name}-ssm-endpoint-sg" }
+}
+
+# ----------------------------
+# Security Group Rules
+# ----------------------------
+# EKS nodes → SSM endpoint (egress)
+resource "aws_security_group_rule" "eks_nodes_to_ssm" {
+  type                     = "egress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.eks_nodes_sg.id
+  source_security_group_id = aws_security_group.ssm_endpoint_sg.id
+}
+
+# Jumpbox → SSM endpoint (egress)
+resource "aws_security_group_rule" "jumpbox_to_ssm" {
+  type                     = "egress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.jumpbox_sg.id
+  source_security_group_id = aws_security_group.ssm_endpoint_sg.id
+}
+
+# SSM endpoint ← EKS nodes (ingress)
+resource "aws_security_group_rule" "ssm_from_nodes" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ssm_endpoint_sg.id
+  source_security_group_id = aws_security_group.eks_nodes_sg.id
+}
+
+# SSM endpoint ← Jumpbox (ingress)
+resource "aws_security_group_rule" "ssm_from_jumpbox" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ssm_endpoint_sg.id
+  source_security_group_id = aws_security_group.jumpbox_sg.id
+}
+
+# SSM endpoint → Anywhere (default egress)
+resource "aws_security_group_rule" "ssm_to_anywhere" {
+  type              = "egress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.ssm_endpoint_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 # -----------------------------
