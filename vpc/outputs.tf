@@ -36,3 +36,8 @@ output "igw_id" {
 output "nat_gateway_ids" {
   value = var.create_nat_gateway == "yes" ? aws_nat_gateway.this[*].id : null
 }
+
+output "private_route_table_ids" {
+  description = "Route table IDs for private subnets"
+  value       = aws_route_table.private[*].id
+}

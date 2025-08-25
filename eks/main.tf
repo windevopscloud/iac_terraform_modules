@@ -313,3 +313,40 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   security_group_ids = [aws_security_group.ssm_endpoint_sg.id]
   private_dns_enabled = true
 }
+
+# -----------------------------
+# VPC ENDPOINTS (Interface + Gateway)
+# -----------------------------
+# Interface endpoints required for private EKS nodes
+locals {
+  eks_interface_endpoints = [
+    "com.amazonaws.${var.aws_region}.eks",
+    "com.amazonaws.${var.aws_region}.sts",
+    "com.amazonaws.${var.aws_region}.ec2",
+    "com.amazonaws.${var.aws_region}.ecr.api",
+    "com.amazonaws.${var.aws_region}.ecr.dkr",
+    "com.amazonaws.${var.aws_region}.logs"
+  ]
+}
+
+resource "aws_vpc_endpoint" "eks_interface" {
+  for_each            = toset(local.eks_interface_endpoints)
+  vpc_id              = var.vpc_id
+  service_name        = each.key
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.private_subnets
+  security_group_ids  = [aws_security_group.ssm_endpoint_sg.id]
+  private_dns_enabled = true
+}
+
+# Gateway endpoint for S3 (required for ECR image layers & CNI plugin)
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = var.vpc_id
+  service_name = "com.amazonaws.${var.aws_region}.s3"
+
+  route_table_ids = var.private_route_table_ids
+
+  tags = {
+    Name = "${var.cluster_name}-s3-endpoint"
+  }
+}

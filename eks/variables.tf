@@ -75,3 +75,8 @@ variable "vpc_id" {
   description = "The ID of the VPC where EKS cluster and nodes will be deployed"
   type        = string
 }
+
+variable "private_route_table_ids" {
+  description = "List of private route table IDs from VPC"
+  type        = list(string)
+}
