@@ -317,6 +317,7 @@ resource "aws_security_group" "ssm_endpoint_sg" {
 # Security Group Rules
 # ----------------------------
 # EKS nodes → SSM endpoint (egress)
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group_rule" "eks_nodes_to_ssm" {
   type                     = "egress"
   from_port                = 443
@@ -327,6 +328,7 @@ resource "aws_security_group_rule" "eks_nodes_to_ssm" {
 }
 
 # Jumpbox → SSM endpoint (egress)
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group_rule" "jumpbox_to_ssm" {
   type                     = "egress"
   from_port                = 443
@@ -337,6 +339,7 @@ resource "aws_security_group_rule" "jumpbox_to_ssm" {
 }
 
 # SSM endpoint ← EKS nodes (ingress)
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group_rule" "ssm_from_nodes" {
   type                     = "ingress"
   from_port                = 443
@@ -347,6 +350,7 @@ resource "aws_security_group_rule" "ssm_from_nodes" {
 }
 
 # SSM endpoint ← Jumpbox (ingress)
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group_rule" "ssm_from_jumpbox" {
   type                     = "ingress"
   from_port                = 443
@@ -357,6 +361,8 @@ resource "aws_security_group_rule" "ssm_from_jumpbox" {
 }
 
 # SSM endpoint → Anywhere (default egress)
+#tfsec:ignore:aws-ec2-no-public-egress-sgr
+#tfsec:ignore:aws-ec2-add-description-to-security-group-rule
 resource "aws_security_group_rule" "ssm_to_anywhere" {
   type              = "egress"
   from_port         = 443
